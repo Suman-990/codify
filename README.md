@@ -1,7 +1,14 @@
 # Codify 🚀
 
-Codify is a high-performance, LeetCode-style online judge platform built with **Spring Boot** and **React**. It features a robust, containerized code execution engine, real-time submission tracking via **Kafka**, and AI-powered code analysis using **LLMs**.
+Codify is a high-performance, LeetCode-style online judge platform built with **Spring Boot** and **React**. It features a robust, containerized code execution engine, real-time submission tracking via **Kafka**, and AI-powered code analysis using **Google Gemini**.
 
+## 🎬 Demo
+
+[![Codify Demo](frontend/public/demo.gif)](https://www.linkedin.com/posts/suman990_softwareengineering-springboot-java-ugcPost-7473074463694319618-tpXN/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAF2dqpgB8QbXMWRrKvJwO2FRaJxpUkCIT-A)
+
+*Click the GIF to see the full demo video!*
+
+> **Note:** The project is not live at the moment as I don't currently have access to a VPS to deploy it. You can run it locally by following the setup instructions below.
 
 
 ## ✨ Features
@@ -9,7 +16,7 @@ Codify is a high-performance, LeetCode-style online judge platform built with **
 - **Multi-Language Support**: Execute code in **Java**, **Python**, and **C++**.
 - **Containerized Sandbox**: Secure code execution using isolated Docker containers with resource limits (CPU/Memory) and disabled networking.
 - **Asynchronous Processing**: Submissions are queued via **Apache Kafka** to handle high loads and ensure system stability.
-- **AI Code Analysis**: Automated time/space complexity analysis and code feedback powered by **Groq AI (Llama 3.3)**.
+- **AI Code Analysis**: Automated time/space complexity analysis and code feedback powered by **Google Gemini 2.0 Flash**.
 - **Interactive Code Editor**: Integrated **Monaco Editor** (the engine behind VS Code) with syntax highlighting and themes.
 - **Advanced Dashboard**: Track progress with daily submission heatmaps, problem difficulty breakdown (Easy/Medium/Hard), and acceptance rates.
 - **OAuth2 Integration**: Secure login with **Google OAuth2** and **JWT**-based authentication.
@@ -26,7 +33,7 @@ Codify is a high-performance, LeetCode-style online judge platform built with **
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
 
-- **AI Orchestration**: Groq API (Llama 3.3 70B)
+- **AI Orchestration**: Google Gemini API (gemini-2.0-flash)
 - **Messaging**: Kafka (Aiven)
 - **Database**: PostgreSQL (Neon.tech)
 
@@ -48,7 +55,7 @@ Codify follows a distributed architecture designed for scalability:
 3.  **Message Queue**: Submissions are pushed to language-specific Kafka topics (`JavaSubmissions`, etc.).
 4.  **Judge Workers**: `SubmitService` consumes Kafka messages and manages a pool of Docker containers.
 5.  **Execution Sandbox**: Code is executed inside pre-warmed Docker containers to minimize latency.
-6.  **AI Analyzer**: Post-execution, the code is sent to Groq AI for complexity analysis.
+6.  **AI Analyzer**: Post-execution, the code is sent to **Google Gemini 2.0 Flash** for complexity analysis.
 
 ## 🔄 Code Execution Flow
 
@@ -60,7 +67,7 @@ The platform uses a sophisticated multi-stage pipeline for code execution:
 4.  **Preparation**: The worker creates a temporary workspace in `backend/sandbox/`, writes the user's code and the problem's "Main" wrapper.
 5.  **Execution**: The workspace is copied into the container using `docker cp`. The code is compiled and executed via `docker exec` with a 10-second timeout.
 6.  **Parsing**: Standard output is parsed for specific tokens (`TOTAL:`, `TIME_TAKEN:`) to determine the verdict.
-7.  **AI Analysis**: If the code passes, the **Groq API (Llama 3.3)** analyzes the code for time/space complexity and provides descriptive feedback.
+7.  **AI Analysis**: If the code passes, **Google Gemini 2.0 Flash** analyzes the code for time/space complexity and provides descriptive feedback.
 8.  **Persistance**: Results are saved to PostgreSQL, and user/question statistics are updated.
 
 ## 💾 Database Schema
@@ -91,7 +98,7 @@ The system uses a relational schema with specialized collections for statistics:
    GOOGLE_CLIENT_ID=your-google-id
    GOOGLE_CLIENT_SECRET=your-google-secret
    KAFKA_BOOTSTRAP_SERVERS=your-kafka-url
-   GROQ_API_KEY=your-groq-key
+   GEMINI_API_KEY=your-gemini-key
    ```
 3. Install dependencies and run:
    ```bash

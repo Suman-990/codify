@@ -21,6 +21,7 @@ public class Submission {
     private String userCode;
     private Long questionId;
     private String questionTitle;
+    private String output;
     private String language;
     private String status; // pending,executed
     private Long userId;

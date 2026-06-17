@@ -63,7 +63,7 @@ export default function SubmissionResult() {
         language: submission.language,
         code: submission.userCode,
         userId: parseInt(localStorage.getItem("userId") || "1"),
-        userName: localStorage.getItem("userName") || "Developer",
+        userName: JSON.parse(localStorage.getItem("user") || "{}").username || "Developer",
         questionId: submission.questionId,
         executionTime: parseInt(submission.executionTime || "0"),
         aproach: approach,
@@ -214,9 +214,9 @@ export default function SubmissionResult() {
         <div className="flex items-center gap-4">
           <div className="w-8 h-8 bg-white overflow-hidden">
             <img 
-              alt="Avatar" 
+              alt="☣" 
               className="w-full h-full object-cover grayscale" 
-              src="/api/placeholder/32/32"
+              src={`/src/assets/pfp/${JSON.parse(localStorage.getItem("user") || "{}").profilePictureId || 0}.png`}
             />
           </div>
         </div>
@@ -394,6 +394,21 @@ export default function SubmissionResult() {
                 }}
               />
             </div>
+            
+            {/* Output Section */}
+            {submission.output && (
+              <div className="flex flex-col border-t border-[#474747]/10 bg-[#131313] min-h-[200px]">
+                <div className="h-12 border-b border-[#474747]/10 flex items-center px-6 bg-[#1f1f1f]">
+                  <span className="font-['Space_Grotesk'] text-[10px] tracking-[0.2em] uppercase text-[#919191] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[14px]">terminal</span>
+                    Console Output
+                  </span>
+                </div>
+                <div className="p-6 overflow-y-auto flex-grow font-mono text-xs text-[#d4d4d4] whitespace-pre-wrap leading-relaxed">
+                  {submission.output}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

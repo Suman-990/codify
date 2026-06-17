@@ -1,0 +1,4 @@
+Built a LeetCode-style judge using Spring Boot and React, executing code in isolated Docker sandboxes for maximum security and resource control.
+Architected an asynchronous pipeline with Apache Kafka, reducing submission latency and ensuring stability under high concurrent traffic.
+Developed a multi-language engine featuring AI-driven complexity analysis and interactive user statistics including daily submission heatmaps.
+Implemented JWT/OAuth2 authentication and a Role-Based Admin Dashboard to manage users, curate problems, and monitor system-wide health metrics.

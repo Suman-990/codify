@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +44,11 @@ public class SubmitController {
         return handleSubmission(userInput, "cpp", "CppSubmissions");
     }
 
+    @GetMapping("/submit/ai-health")
+    public ResponseEntity<String> checkAiHealth() throws Exception {
+        return ResponseEntity.ok(submitService.aiHealthCheck());
+    }
+
     private ResponseEntity<Long> handleSubmission(UserInput userInput, String language, String topicName) {
         Question question = questionRepository.findById(userInput.getQuestionId()).orElseThrow(() -> new RuntimeException("Question not found")); 
         Submission submission = Submission.builder()
@@ -62,11 +68,7 @@ public class SubmitController {
         log.info("{} submission sent to kafka topic {}", language, topicName);
         return ResponseEntity.ok(submission.getId());
     }
-    @PostMapping("/aihealthcheck")
-    public ResponseEntity<String> aiHealthCheck() throws Exception {
-        String response = submitService.AiHealthCheck();
-        return ResponseEntity.ok(response);
-    }
+
     //this method is to keep the kafka connection alive, as it can time out after some time of inactivity. It sends a dummy message to a topic every 6 hours.
     private final KafkaTemplate<Long,String> kafkaTemplate2;
     @Scheduled(fixedDelay = 6 * 60 * 60 * 1000)

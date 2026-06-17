@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.*;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,7 +33,7 @@ public class User implements UserDetails {
     @ElementCollection
     private Set<Long> attemptedQuestions;
     @ElementCollection
-    private Map<LocalDate, Integer> dailySubmissions;
+    private Map<String, Integer> dailySubmissions;
     private int totalSubmissions;
     private int totalSolved;
     private int easySolved;
@@ -44,7 +45,12 @@ public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority("ROLE_" + role));
 }
 
+public String getUserName() {
+    return userName;
+}
+
 @Override
+@JsonIgnore
 public String getUsername() {
     return email;
 }

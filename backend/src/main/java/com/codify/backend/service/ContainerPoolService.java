@@ -15,7 +15,7 @@ public class ContainerPoolService {
     private final Map<String, BlockingQueue<String>> pools = new HashMap<>();
     private static final int POOL_SIZE = 3;
     private static final Map<String, String> IMAGES = Map.of(
-        "java", "java-sandbox",
+        "java", "eclipse-temurin:21-jdk",
         "python", "python:3.9-slim",
         "cpp", "gcc:latest"
     );

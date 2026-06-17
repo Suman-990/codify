@@ -21,19 +21,19 @@ export default function Problem() {
   const [error, setError] = useState("");
   const [solutions, setSolutions] = useState(null);
   const [userSubmissions, setUserSubmissions] = useState([]);
-  
+
   // Custom States
   const [solutionsPage, setSolutionsPage] = useState(0);
   const [fetchedSolutions, setFetchedSolutions] = useState([]);
   const [hasMoreSolutions, setHasMoreSolutions] = useState(true);
-  
+
   const [discussionsPage, setDiscussionsPage] = useState(0);
   const [discussions, setDiscussions] = useState([]);
   const [hasMoreDiscussions, setHasMoreDiscussions] = useState(true);
   const [newDiscussion, setNewDiscussion] = useState("");
-  
+
   const pollingIntervalRef = useRef(null);
-  
+
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
 
@@ -41,7 +41,7 @@ export default function Problem() {
   useEffect(() => {
     fetchQuestion();
     fetchUserSubmissions();
-    
+
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -68,7 +68,7 @@ export default function Problem() {
         else setFetchedSolutions(prev => [...prev, ...data]);
         if (data.length < 5) setHasMoreSolutions(false);
       }
-    } catch(err) { console.error(err); }
+    } catch (err) { console.error(err); }
   };
 
   const fetchDiscussions = async (page) => {
@@ -82,7 +82,7 @@ export default function Problem() {
         else setDiscussions(prev => [...prev, ...data]);
         if (data.length < 20) setHasMoreDiscussions(false);
       }
-    } catch(err) { console.error(err); }
+    } catch (err) { console.error(err); }
   };
 
   const handleCreateDiscussion = async () => {
@@ -91,8 +91,8 @@ export default function Problem() {
       const payload = {
         questionId: parseInt(questionId),
         userId: parseInt(userId || "1"),
-        userName: localStorage.getItem("userName") || "Developer",
-        userProfilePicture: parseInt(localStorage.getItem("profilePictureId") || "0"),
+        userName: JSON.parse(localStorage.getItem("user") || "{}").username || "Developer",
+        userProfilePicture: JSON.parse(localStorage.getItem("user") || "{}").profilePictureId || 0,
         content: newDiscussion
       };
       const response = await fetch("/api/discussions", {
@@ -122,7 +122,7 @@ export default function Problem() {
       if (!response.ok) throw new Error("Failed to fetch question");
       const data = await response.json();
       setQuestion(data);
-      
+
       // Load solution code for default language
       loadSolutionCode(data, "java");
     } catch (err) {
@@ -150,7 +150,7 @@ export default function Problem() {
     const solutionKey = `solution_${language}`;
     const mainKey = `main_${language}`;
     let codeContent = "";
-    
+
     if (q[solutionKey]) {
       codeContent = q[solutionKey];
     } else if (q[mainKey]) {
@@ -159,7 +159,7 @@ export default function Problem() {
       // Default template based on language
       codeContent = getDefaultTemplate(language);
     }
-    
+
     setCode(codeContent);
   };
 
@@ -197,22 +197,22 @@ public:
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
     }
-    
+
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const response = await fetch(`/api/submissions/${submissionId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         if (!response.ok) return;
-        
+
         const submission = await response.json();
-        
+
         if (submission.status === "EXECUTED") {
           // Stop polling
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
-          
+
           // Redirect to submission page
           navigate(`/submissions/${submissionId}`);
         }
@@ -227,19 +227,19 @@ public:
       setError("Please write some code before submitting");
       return;
     }
-    
+
     setSubmitting(true);
     setError("");
-    
+
     try {
       const submissionData = {
         userCode: code,
         questionId: parseInt(questionId),
         userId: parseInt(userId)
       };
-      
+
       const endpoint = LANGUAGES[selectedLanguage].endpoint;
-      
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -248,20 +248,18 @@ public:
         },
         body: JSON.stringify(submissionData)
       });
-      
+
       if (!response.ok) {
         const errorMsg = await response.text();
         throw new Error(errorMsg || "Submission failed");
       }
-      
+
       const submissionId = await response.json();
-      
+
       // Start polling for results
       startPolling(submissionId);
-      
-      // Show user that submission is being processed
-      alert("Code submitted! Processing your solution...");
-      
+
+
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -289,7 +287,7 @@ public:
         <div className="text-center">
           <span className="material-symbols-outlined text-6xl text-[#474747] mb-4">error</span>
           <p className="text-white mb-2">Problem not found</p>
-          <button 
+          <button
             onClick={() => navigate("/dashboard")}
             className="text-[#6ee7b7] text-sm hover:underline"
           >
@@ -305,7 +303,7 @@ public:
       {/* Top Navigation Bar */}
       <header className="bg-[#1F1F1F] flex items-center justify-between w-full px-6 h-14 border-b border-white/10 z-40 flex-shrink-0">
         <div className="flex items-center gap-6">
-          <button 
+          <button
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-2 text-[#474747] hover:text-white transition-colors"
           >
@@ -317,17 +315,16 @@ public:
             PROBLEM {question.id}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-8 h-full">
           {["description", "solution", "submissions", "discuss"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`h-full flex items-center border-b-2 transition-colors px-2 ${
-                activeTab === tab
+              className={`h-full flex items-center border-b-2 transition-colors px-2 ${activeTab === tab
                   ? "border-white text-white font-bold"
                   : "border-transparent text-[#474747] hover:text-white"
-              }`}
+                }`}
             >
               <span className="text-xs tracking-widest uppercase">
                 {tab === "submissions" ? "My Submissions" : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -335,7 +332,7 @@ public:
             </button>
           ))}
         </div>
-        
+
         <div className="flex items-center gap-4">
           <button className="text-[#c6c6c6] hover:text-white transition-colors">
             <span className="material-symbols-outlined text-sm">terminal</span>
@@ -351,11 +348,10 @@ public:
             <div className="px-8 py-8">
               {/* Difficulty Badge */}
               <div className="flex items-center gap-3 mb-6">
-                <span className={`px-3 py-1 text-[10px] tracking-widest uppercase font-bold border ${
-                  question.difficulty === "EASY" ? "text-[#6ee7b7] border-[#6ee7b7]/30 bg-[#6ee7b7]/5" :
-                  question.difficulty === "MEDIUM" ? "text-[#fbbf24] border-[#fbbf24]/30 bg-[#fbbf24]/5" :
-                  "text-[#f87171] border-[#f87171]/30 bg-[#f87171]/5"
-                }`}>
+                <span className={`px-3 py-1 text-[10px] tracking-widest uppercase font-bold border ${question.difficulty === "EASY" ? "text-[#6ee7b7] border-[#6ee7b7]/30 bg-[#6ee7b7]/5" :
+                    question.difficulty === "MEDIUM" ? "text-[#fbbf24] border-[#fbbf24]/30 bg-[#fbbf24]/5" :
+                      "text-[#f87171] border-[#f87171]/30 bg-[#f87171]/5"
+                  }`}>
                   {question.difficulty}
                 </span>
                 <span className="text-[#474747] text-[10px] tracking-widest uppercase">
@@ -371,7 +367,7 @@ public:
               {/* Description */}
               <div className="prose prose-invert max-w-none text-[#c6c6c6] leading-relaxed space-y-6">
                 <div dangerouslySetInnerHTML={{ __html: question.description.replace(/\n/g, '<br/>') }} />
-                
+
                 {/* Example */}
                 {(question.exampleInput || question.exampleOutput) && (
                   <div className="bg-[#1f1f1f] p-6 space-y-4 mt-6">
@@ -435,22 +431,25 @@ public:
                   {fetchedSolutions.map((sol) => (
                     <div key={sol.id} className="bg-[#1f1f1f] border border-[#2a2a2a] p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
+                        <div
+                          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/profile/${sol.userId}`)}
+                        >
                           <div className="w-8 h-8 bg-[#2a2a2a] overflow-hidden rounded-full border border-[#474747]">
-                            <img src={`/api/placeholder/32/32?id=${sol.userProfilePicture}`} alt="Avatar" className="w-full h-full object-cover grayscale" />
+                            <img src={`/src/assets/pfp/${sol.userProfilePicture || 0}.png`} alt="☣" className="w-full h-full object-cover grayscale" />
                           </div>
                           <div>
-                            <p className="text-white text-sm font-bold">{sol.userName}</p>
+                            <p className="text-white text-sm font-bold hover:underline">{sol.userName}</p>
                             <p className="text-[#474747] text-[10px] uppercase tracking-widest">{new Date(sol.createdAt || Date.now()).toLocaleDateString()}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                           <span className="bg-[#2a2a2a] text-[#c6c6c6] text-[10px] px-2 py-1 uppercase tracking-widest">
-                             {LANGUAGES[sol.language]?.name || sol.language}
-                           </span>
-                           <span className="bg-[#131313] text-[#919191] text-[10px] px-2 py-1 uppercase tracking-widest border border-[#2a2a2a]">
-                             {sol.executionTime}ms
-                           </span>
+                          <span className="bg-[#2a2a2a] text-[#c6c6c6] text-[10px] px-2 py-1 uppercase tracking-widest">
+                            {LANGUAGES[sol.language]?.name || sol.language}
+                          </span>
+                          <span className="bg-[#131313] text-[#919191] text-[10px] px-2 py-1 uppercase tracking-widest border border-[#2a2a2a]">
+                            {sol.executionTime}ms
+                          </span>
                         </div>
                       </div>
                       <div className="mb-4">
@@ -458,14 +457,14 @@ public:
                         <p className="text-[#c6c6c6] text-sm leading-relaxed whitespace-pre-wrap">{sol.aproach}</p>
                       </div>
                       <div className="flex gap-4 mb-4">
-                         <div className="flex flex-col">
-                            <span className="text-[#474747] text-[10px] uppercase tracking-widest">Time</span>
-                            <span className="text-[#6ee7b7] text-xs font-mono">{sol.timeComplexity}</span>
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[#474747] text-[10px] uppercase tracking-widest">Space</span>
-                            <span className="text-[#6ee7b7] text-xs font-mono">{sol.spaceComplexity}</span>
-                         </div>
+                        <div className="flex flex-col">
+                          <span className="text-[#474747] text-[10px] uppercase tracking-widest">Time</span>
+                          <span className="text-[#6ee7b7] text-xs font-mono">{sol.timeComplexity}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[#474747] text-[10px] uppercase tracking-widest">Space</span>
+                          <span className="text-[#6ee7b7] text-xs font-mono">{sol.spaceComplexity}</span>
+                        </div>
                       </div>
                       <div className="bg-[#0e0e0e] p-4 text-xs font-mono text-[#e2e2e2] overflow-x-auto border border-[#2a2a2a]">
                         <pre>{sol.code}</pre>
@@ -473,7 +472,7 @@ public:
                     </div>
                   ))}
                   {hasMoreSolutions && (
-                    <button 
+                    <button
                       onClick={() => {
                         const nextPage = solutionsPage + 1;
                         setSolutionsPage(nextPage);
@@ -502,18 +501,17 @@ public:
               ) : (
                 <div className="space-y-3">
                   {userSubmissions.map((sub) => (
-                    <div 
+                    <div
                       key={sub.submissionId}
                       onClick={() => navigate(`/submissions/${sub.submissionId}`)}
                       className="bg-[#1f1f1f] p-4 hover:bg-[#2a2a2a] transition-colors cursor-pointer"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            sub.verdict === "PASS" ? "bg-[#6ee7b7]/10 text-[#6ee7b7]" :
-                            sub.verdict === "FAIL" || sub.verdict === "COMPILATION_ERROR" || sub.verdict === "RUNTIME_ERROR" ? "bg-[#f87171]/10 text-[#f87171]" :
-                            "bg-[#fbbf24]/10 text-[#fbbf24]"
-                          }`}>
+                          <span className={`text-xs px-2 py-1 rounded ${sub.verdict === "PASS" ? "bg-[#6ee7b7]/10 text-[#6ee7b7]" :
+                              sub.verdict === "FAIL" || sub.verdict === "COMPILATION_ERROR" || sub.verdict === "RUNTIME_ERROR" ? "bg-[#f87171]/10 text-[#f87171]" :
+                                "bg-[#fbbf24]/10 text-[#fbbf24]"
+                            }`}>
                             {sub.verdict || "PENDING"}
                           </span>
                           <span className="text-[10px] text-[#474747] uppercase">{sub.language}</span>
@@ -538,17 +536,17 @@ public:
               <h2 className="font-['Space_Grotesk'] text-2xl font-bold tracking-tighter text-white mb-6">
                 Discussion
               </h2>
-              
+
               {/* Create Discussion */}
               <div className="bg-[#1f1f1f] border border-[#2a2a2a] p-4 mb-8">
-                <textarea 
+                <textarea
                   value={newDiscussion}
                   onChange={(e) => setNewDiscussion(e.target.value)}
                   className="w-full bg-[#131313] text-white border border-[#2a2a2a] p-3 min-h-[100px] focus:outline-none focus:border-[#6ee7b7] transition-colors resize-none text-sm mb-3"
                   placeholder="Ask a question or share a hint..."
                 />
                 <div className="flex justify-end">
-                  <button 
+                  <button
                     onClick={handleCreateDiscussion}
                     disabled={!newDiscussion.trim()}
                     className="px-6 py-2 bg-white text-black text-xs tracking-widest uppercase font-bold hover:bg-[#e0e0e0] transition-colors disabled:opacity-50"
@@ -568,12 +566,15 @@ public:
                   <>
                     {discussions.map(disc => (
                       <div key={disc.id} className="border-b border-[#2a2a2a] pb-6 last:border-0">
-                        <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="flex items-center gap-3 mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/profile/${disc.userId}`)}
+                        >
                           <div className="w-8 h-8 bg-[#2a2a2a] overflow-hidden rounded-full border border-[#474747] flex-shrink-0">
-                            <img src={`/api/placeholder/32/32?id=${disc.userProfilePicture}`} alt="Avatar" className="w-full h-full object-cover grayscale" />
+                            <img src={`/src/assets/pfp/${disc.userProfilePicture || 0}.png`} alt="☣" className="w-full h-full object-cover grayscale" />
                           </div>
                           <div>
-                            <p className="text-white text-sm font-bold leading-none">{disc.userName}</p>
+                            <p className="text-white text-sm font-bold leading-none hover:underline">{disc.userName}</p>
                             <p className="text-[#474747] text-[10px] uppercase tracking-widest mt-1">
                               {disc.timestamp ? new Date(disc.timestamp).toLocaleString() : ""}
                             </p>
@@ -583,7 +584,7 @@ public:
                       </div>
                     ))}
                     {hasMoreDiscussions && (
-                      <button 
+                      <button
                         onClick={() => {
                           const nextPage = discussionsPage + 1;
                           setDiscussionsPage(nextPage);
@@ -675,7 +676,7 @@ public:
             Auto-saved
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <button
             onClick={handleRun}

@@ -23,7 +23,7 @@ public class ProfileDto {
     private long sharedSolutionsCount;
     private long discussionsCount;
     private int activeDays;
-    private Map<LocalDate, Integer> dailySubmissions;
+    private Map<String, Integer> dailySubmissions;
     private int rankPercentage;
     private long rank;
     private LocalDate joined;

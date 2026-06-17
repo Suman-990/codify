@@ -82,7 +82,7 @@ function ProfileAvatar({ user, size = "sm", onClick }) {
       {!imgFailed && user?.profilePictureId ? (
         <img
           src={imgSrc}
-          alt={user.userName}
+          alt={user.username}
           onError={() => setImgFailed(true)}
           className="w-full h-full object-cover grayscale"
         />

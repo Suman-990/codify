@@ -24,6 +24,7 @@ public class Solution {
     private String userName;
     private Long questionId;
     private Integer executionTime;
+    @Column(columnDefinition = "TEXT")
     private String aproach;
     private String timeComplexity;
     private String spaceComplexity;

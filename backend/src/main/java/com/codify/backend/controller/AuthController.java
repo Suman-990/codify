@@ -6,11 +6,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import java.util.*;
 import com.codify.backend.model.Otp;
@@ -49,6 +45,7 @@ public class AuthController {
     @org.springframework.beans.factory.annotation.Value("${spring.sendgrid.api-key}")
     private String sendgridApiKey;
 
+
     @PostMapping("/login") 
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
        try {
@@ -66,7 +63,7 @@ public class AuthController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", user.getId());
-            response.put("username", user.getUsername());
+        response.put("username", user.getUserName());
             response.put("email", user.getEmail());
             response.put("role", user.getRole());
             response.put("profilePictureId", user.getProfilePictureId());
@@ -184,7 +181,7 @@ public class AuthController {
         String token = jwtService.generateToken(user);
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
-        response.put("username", user.getUsername());
+        response.put("username", user.getUserName());
         response.put("email", user.getEmail());
         response.put("role", user.getRole());
         response.put("token", token);

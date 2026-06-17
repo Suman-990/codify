@@ -25,6 +25,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
 
+    @GetMapping("/ping")
+    public String ping() {
+        return "pong";
+    }
+
     private final UserService userService;
 
     // ==================== USER PROFILE ENDPOINTS ====================

@@ -89,11 +89,16 @@ export default function UserProfile() {
     const dailyMap = profile?.dailySubmissions || {};
     const today = new Date();
     const days = [];
-    for (let i = 364; i >= 0; i--) {
+    
+    // Use exactly 364 days (52 full weeks) so the grid is a perfect rectangle
+    for (let i = 363; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const isoStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
-      const count = dailyMap[isoStr] || 0;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const localDateStr = `${year}-${month}-${day}`; // YYYY-MM-DD in local time
+      const count = dailyMap[localDateStr] || 0;
       days.push({ date: d, count });
     }
 
@@ -193,7 +198,7 @@ export default function UserProfile() {
                 {profilePictureId ? (
                   <img
                     src={`/src/assets/pfp/${profilePictureId}.png`}
-                    alt="Avatar"
+                    alt="☣"
                     className="w-full h-full object-cover grayscale"
                   />
                 ) : (
