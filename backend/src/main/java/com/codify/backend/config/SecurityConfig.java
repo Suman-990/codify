@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/ping").permitAll()
                         .requestMatchers("/api/submit/ai-health").permitAll()
+                        .requestMatchers("/ws/**").permitAll() // WS handshake auth is handled by JwtHandshakeInterceptor
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

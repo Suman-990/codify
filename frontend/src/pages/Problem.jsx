@@ -32,22 +32,28 @@ export default function Problem() {
   const [hasMoreDiscussions, setHasMoreDiscussions] = useState(true);
   const [newDiscussion, setNewDiscussion] = useState("");
 
-  const pollingIntervalRef = useRef(null);
+  // WebSocket state — replaces polling
+  const wsRef = useRef(null);
+  const [activeUsers, setActiveUsers] = useState(0);
 
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
 
-  // Fetch question data
+  // Fetch question data and open WebSocket connection
   useEffect(() => {
     fetchQuestion();
     fetchUserSubmissions();
+    connectWebSocket();
 
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+      // Clean up WS on unmount or questionId change
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [questionId]);
+
 
   useEffect(() => {
     if (activeTab === "solution" && fetchedSolutions.length === 0) {
@@ -193,33 +199,65 @@ public:
     }
   };
 
-  const startPolling = (submissionId) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
+  /**
+   * Opens a WebSocket connection to the backend for this question.
+   * - Receives ACTIVE_USERS messages to update the live counter.
+   * - Receives RESULT messages and navigates to the submission page.
+   * - Auto-reconnects once if the connection drops unexpectedly (e.g. network blip).
+   *
+   * Token is passed as a query param because the browser WebSocket API
+   * does not allow custom headers on WS connections.
+   */
+  const connectWebSocket = () => {
+    // Close any existing connection before opening a new one
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
-    pollingIntervalRef.current = setInterval(async () => {
+    const wsUrl = `ws://localhost:8080/ws/question/${questionId}?token=${token}&userId=${userId}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log("[WS] Connected to question room:", questionId);
+    };
+
+    ws.onmessage = (event) => {
       try {
-        const response = await fetch(`/api/submissions/${submissionId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!response.ok) return;
-
-        const submission = await response.json();
-
-        if (submission.status === "EXECUTED") {
-          // Stop polling
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-
-          // Redirect to submission page
-          navigate(`/submissions/${submissionId}`);
+        const msg = JSON.parse(event.data);
+        if (msg.type === "ACTIVE_USERS") {
+          setActiveUsers(msg.count);
+        } else if (msg.type === "RESULT") {
+          // Submission judging complete — navigate to the result page.
+          // setSubmitting(false) is not strictly needed since we navigate away,
+          // but it's good practice in case navigation is slow.
+          setSubmitting(false);
+          navigate(`/submissions/${msg.submissionId}`);
         }
       } catch (err) {
-        console.error("Polling error:", err);
+        console.error("[WS] Failed to parse message:", err);
       }
-    }, 2000); // Poll every 2 seconds
+    };
+
+    ws.onerror = (err) => {
+      console.error("[WS] Connection error:", err);
+    };
+
+    ws.onclose = (event) => {
+      console.log("[WS] Disconnected, code:", event.code, "reason:", event.reason);
+      // Only auto-reconnect on abnormal closure (not user-initiated close)
+      if (event.code !== 1000 && event.code !== 1001) {
+        console.log("[WS] Attempting reconnect in 3s...");
+        setTimeout(() => {
+          // Only reconnect if we're still mounted (wsRef not nulled by cleanup)
+          if (wsRef.current !== null) {
+            connectWebSocket();
+          }
+        }, 3000);
+      }
+    };
+
+    wsRef.current = ws;
   };
 
   const handleSubmit = async () => {
@@ -254,17 +292,16 @@ public:
         throw new Error(errorMsg || "Submission failed");
       }
 
-      const submissionId = await response.json();
-
-      // Start polling for results
-      startPolling(submissionId);
-
+      // submissionId is returned but we don't need to poll —
+      // the backend will push a RESULT message over the WebSocket connection.
+      await response.json();
 
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
     }
   };
+
 
   const handleRun = () => {
     alert("Run functionality coming soon! Please use Submit to test your code.");
@@ -334,6 +371,13 @@ public:
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Live "actively attempting" counter — updated via WebSocket */}
+          {activeUsers > 0 && (
+            <div className="flex items-center gap-2 text-[#474747] text-[10px] tracking-widest uppercase">
+              <span className="w-2 h-2 bg-[#6ee7b7] rounded-full animate-pulse" />
+              {activeUsers} attempting
+            </div>
+          )}
           <button className="text-[#c6c6c6] hover:text-white transition-colors">
             <span className="material-symbols-outlined text-sm">terminal</span>
           </button>

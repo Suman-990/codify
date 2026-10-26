@@ -17,6 +17,7 @@ import com.codify.backend.model.Submission;
 import com.codify.backend.repository.SubmissionRepository;
 import com.codify.backend.service.SubmitService;
 import com.codify.backend.repository.QuestionRepository;
+import com.codify.backend.config.SubmissionWebSocketHandler;
 import java.time.LocalDateTime;
 
 @RestController
@@ -29,6 +30,8 @@ public class SubmitController {
     private final QuestionRepository questionRepository;
     private final KafkaTemplate<Long, Submission> kafkaTemplate;
     private final SubmitService submitService;
+    private final SubmissionWebSocketHandler wsHandler;
+
     @PostMapping("/submit/java")
     public ResponseEntity<Long> submitJava(@RequestBody UserInput userInput) throws Exception {
         return handleSubmission(userInput, "java", "JavaSubmissions");
@@ -66,6 +69,15 @@ public class SubmitController {
         log.info("{} submission created and saved", language);
         kafkaTemplate.send(topicName, submission.getId(), submission);
         log.info("{} submission sent to kafka topic {}", language, topicName);
+
+        // Register the pending submission with the WebSocket handler so the result
+        // is pushed directly to this user's session when judging completes.
+        wsHandler.registerPendingSubmission(
+                submission.getId(),
+                submission.getUserId(),
+                submission.getQuestionId().toString()
+        );
+
         return ResponseEntity.ok(submission.getId());
     }
 
