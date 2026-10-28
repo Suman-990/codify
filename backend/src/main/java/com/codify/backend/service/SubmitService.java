@@ -13,6 +13,7 @@ import com.codify.backend.model.Question;
 import com.codify.backend.repository.SubmissionRepository;
 import com.codify.backend.repository.UserRepository;
 import com.codify.backend.repository.QuestionRepository;
+import com.codify.backend.config.SubmissionWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
@@ -46,6 +47,7 @@ public class SubmitService {
     private final UserRepository userRepository;
     private final QuestionRepository questionRepository;
     private final ContainerPoolService poolService;
+    private final SubmissionWebSocketHandler wsHandler;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper mapper = new ObjectMapper();
     private final TransactionTemplate transactionTemplate;
@@ -246,6 +248,10 @@ public class SubmitService {
             submission.setSpaceComplexity(spaceComplexity);
 
             submissionRepository.save(submission);
+
+            // Push the result to the frontend via WebSocket immediately after saving.
+            // This replaces the 2-second polling loop that was previously in Problem.jsx.
+            wsHandler.notifySubmissionResult(submission.getId(), submission.getVerdict(), submission.getStatus());
 
             final String finalVerdict = verdict;
             final String finalExecutionTime = executionTime;

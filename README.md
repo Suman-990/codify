@@ -14,6 +14,7 @@ Codify is a high-performance, LeetCode-style online judge platform built with **
 ## ✨ Features
 
 - **Multi-Language Support**: Execute code in **Java**, **Python**, and **C++**.
+- **Real-Time WebSockets & Live Presence**: Instant submission results pushed directly to the client via WebSockets (zero polling) and a live counter showing how many developers are currently attempting each problem.
 - **Containerized Sandbox**: Secure code execution using isolated Docker containers with resource limits (CPU/Memory) and disabled networking.
 - **Asynchronous Processing**: Submissions are queued via **Apache Kafka** to handle high loads and ensure system stability.
 - **AI Code Analysis**: Automated time/space complexity analysis and code feedback powered by **Google Gemini 2.0 Flash**.
@@ -31,10 +32,12 @@ Codify is a high-performance, LeetCode-style online judge platform built with **
 ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
 ![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000?style=for-the-badge&logo=apachekafka)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
 ![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
 
 - **AI Orchestration**: Google Gemini API (gemini-2.0-flash)
 - **Messaging**: Kafka (Aiven)
+- **Real-Time Layer**: Spring WebSocket (`TextWebSocketHandler`)
 - **Database**: PostgreSQL (Neon.tech)
 
 ### Frontend
@@ -45,30 +48,91 @@ Codify is a high-performance, LeetCode-style online judge platform built with **
 
 - **Editor**: Monaco Editor (VS Code Engine)
 - **State**: React Hooks & Context API
+- **Live Connection**: Native Browser WebSocket API
 
 ## 🏗️ Architecture
 
 Codify follows a distributed architecture designed for scalability:
 
-1.  **Frontend**: React app hosted on Vite, communicating via REST APIs.
-2.  **API Gateway**: Spring Boot handles routing, auth, and problem management.
+1.  **Frontend**: React app hosted on Vite, communicating via REST APIs and WebSockets.
+2.  **API Gateway & WebSocket Server**: Spring Boot handles routing, JWT auth, problem management, and per-question live rooms.
 3.  **Message Queue**: Submissions are pushed to language-specific Kafka topics (`JavaSubmissions`, etc.).
 4.  **Judge Workers**: `SubmitService` consumes Kafka messages and manages a pool of Docker containers.
 5.  **Execution Sandbox**: Code is executed inside pre-warmed Docker containers to minimize latency.
 6.  **AI Analyzer**: Post-execution, the code is sent to **Google Gemini 2.0 Flash** for complexity analysis.
+7.  **Real-Time Push Service**: Notifies the awaiting user session over WebSocket as soon as judging and persistence finish.
+
+## 🔌 WebSocket & Real-Time Architecture
+
+To eliminate inefficient polling (previously querying `/api/submissions/{id}` every 2 seconds), Codify uses a per-question WebSocket room architecture:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Developer (Frontend)
+    participant WS as WebSocket Handler (Spring Boot)
+    participant API as SubmitController
+    participant Kafka as Apache Kafka
+    participant Worker as Judge Worker (SubmitService)
+    participant Docker as Docker Sandbox
+    participant DB as PostgreSQL
+
+    Note over User,WS: 1. Join Question Room
+    User->>WS: Connect: ws://host/ws/question/{questionId}?token={JWT}&userId={id}
+    WS->>WS: JwtHandshakeInterceptor validates JWT
+    WS-->>User: Connected
+    WS-->>User: Broadcast: { type: "ACTIVE_USERS", count: N }
+
+    Note over User,DB: 2. Submit Code
+    User->>API: POST /api/submit/{lang} { questionId, userCode }
+    API->>DB: Save submission (PENDING)
+    API->>Kafka: Publish submission event
+    API->>WS: registerPendingSubmission(submissionId, userId, questionId)
+    API-->>User: 200 OK (submissionId)
+
+    Note over Kafka,Docker: 3. Execution & Evaluation
+    Kafka->>Worker: Consume submission
+    Worker->>Docker: Execute in isolated container
+    Docker-->>Worker: Execution result & metrics
+    Worker->>DB: Save submission (EXECUTED, Verdict)
+
+    Note over Worker,User: 4. Real-Time Push Notification
+    Worker->>WS: notifySubmissionResult(submissionId, verdict, status)
+    WS-->>User: Push: { type: "RESULT", submissionId, verdict, status }
+    User->>User: Auto-redirect to /submissions/{submissionId}
+```
+
+### Core WebSocket Components
+
+1. **`JwtHandshakeInterceptor`**:
+   - Authenticates the WebSocket connection before upgrading from HTTP.
+   - Extracts the JWT and `userId` from query parameters (`?token=...&userId=...`) since the browser's native WebSocket API does not support custom headers.
+   - Validates the token and attaches `questionId`, `userId`, and `userEmail` as session attributes.
+
+2. **`SubmissionWebSocketHandler`**:
+   - **Per-Question Rooms**: Maintains thread-safe room sets (`ConcurrentHashMap<String, CopyOnWriteArraySet<WebSocketSession>>`) mapping `questionId` to active sessions.
+   - **Active User Presence**: On connection establish/close, automatically broadcasts `{ "type": "ACTIVE_USERS", "count": N }` to all clients in that problem room.
+   - **Targeted Result Routing**: Maintains a `pendingSubmissions` map (`ConcurrentHashMap<Long, WebSocketSession>`) linking each `submissionId` to the specific user's session. When code evaluation completes, the result is sent directly to the awaiting session.
+
+3. **Frontend Integration (`Problem.jsx`)**:
+   - Replaced interval-based polling (`setInterval` every 2s) with native `WebSocket`.
+   - Displays a live animated badge in the top navigation bar showing how many users are currently attempting the problem.
+   - Listens for `RESULT` messages to instantly transition the UI and navigate to the submission report page.
+   - Includes automatic exponential/heartbeat reconnection resilience for dropped connections.
 
 ## 🔄 Code Execution Flow
 
 The platform uses a sophisticated multi-stage pipeline for code execution:
 
-1.  **Submission**: User submits code via Monaco Editor.
-2.  **Queueing**: Backend receives the request and pushes a `Submission` object to **Kafka**.
+1.  **Submission**: User submits code via Monaco Editor on the problem page (connected via WebSocket to `/ws/question/{questionId}`).
+2.  **Queueing & WS Registration**: Backend receives the request, pushes a `Submission` object to **Kafka**, and registers the pending submission with `SubmissionWebSocketHandler`.
 3.  **Acquisition**: A judge worker picks up the message and acquires an idle container from the `ContainerPoolService`.
 4.  **Preparation**: The worker creates a temporary workspace in `backend/sandbox/`, writes the user's code and the problem's "Main" wrapper.
 5.  **Execution**: The workspace is copied into the container using `docker cp`. The code is compiled and executed via `docker exec` with a 10-second timeout.
 6.  **Parsing**: Standard output is parsed for specific tokens (`TOTAL:`, `TIME_TAKEN:`) to determine the verdict.
 7.  **AI Analysis**: If the code passes, **Google Gemini 2.0 Flash** analyzes the code for time/space complexity and provides descriptive feedback.
-8.  **Persistance**: Results are saved to PostgreSQL, and user/question statistics are updated.
+8.  **Persistence**: Results are saved to PostgreSQL, and user/question statistics are updated.
+9.  **Real-Time Notification**: The worker notifies `SubmissionWebSocketHandler`, which immediately pushes a `RESULT` message to the user's active WebSocket connection, automatically redirecting them to their submission analysis.
 
 ## 💾 Database Schema
 
