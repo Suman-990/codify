@@ -102,23 +102,6 @@ sequenceDiagram
     User->>User: Auto-redirect to /submissions/{submissionId}
 ```
 
-### Core WebSocket Components
-
-1. **`JwtHandshakeInterceptor`**:
-   - Authenticates the WebSocket connection before upgrading from HTTP.
-   - Extracts the JWT and `userId` from query parameters (`?token=...&userId=...`) since the browser's native WebSocket API does not support custom headers.
-   - Validates the token and attaches `questionId`, `userId`, and `userEmail` as session attributes.
-
-2. **`SubmissionWebSocketHandler`**:
-   - **Per-Question Rooms**: Maintains thread-safe room sets (`ConcurrentHashMap<String, CopyOnWriteArraySet<WebSocketSession>>`) mapping `questionId` to active sessions.
-   - **Active User Presence**: On connection establish/close, automatically broadcasts `{ "type": "ACTIVE_USERS", "count": N }` to all clients in that problem room.
-   - **Targeted Result Routing**: Maintains a `pendingSubmissions` map (`ConcurrentHashMap<Long, WebSocketSession>`) linking each `submissionId` to the specific user's session. When code evaluation completes, the result is sent directly to the awaiting session.
-
-3. **Frontend Integration (`Problem.jsx`)**:
-   - Replaced interval-based polling (`setInterval` every 2s) with native `WebSocket`.
-   - Displays a live animated badge in the top navigation bar showing how many users are currently attempting the problem.
-   - Listens for `RESULT` messages to instantly transition the UI and navigate to the submission report page.
-   - Includes automatic exponential/heartbeat reconnection resilience for dropped connections.
 
 ## 🔄 Code Execution Flow
 
